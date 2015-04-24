@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Tool Labs CDNjs Mirror</title>
+
+    <!-- Bootstrap -->
+    <link href="//tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 52px;
+        }
+
+        li.lib {
+            list-style: none;
+            display: block;
+            border-bottom: 1px dotted #ccc;
+            padding: 8px;
+            marging: 8px;
+        }
+
+        li.lib .buttons-bar { 
+            padding: 8px 0px;
+        }
+    </style>
+
+  </head>
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="#">Wikimedia ToolLabs CDNjs</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="//cdnjs.com">Upstream: cdnjs.com</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+        <div class="jumbotron">
+            <h2>Mirror of <a href="//cdnjs.com">cdnjs.com</a> for use by <a href="//tools.wmflabs.org">Wikimedia Tool Labs</a></h2>
+            <p>Collection of very useful JS / CSS libraries served in a fast, <a href="//wikimediafoundation.org/wiki/Privacy_policy">Wikimedia Privacy Policy</a> friendly way.</p>
+            <p><small>Tip: Use your browser's search function to search! The libraries are ordered by popularity. Clicking 'Use' will take show you list of files distributed with the library and allows you to include them as you see fit</small></p>
+
+        </div>
+
+        <div id="results-container">
+            <ul>
+            {% for lib in libraries %}
+                <li class='lib'>
+                    <h3><a href="{{ lib.homepage }}">{{ lib.name }}</a></h3>
+
+                    <p>{{ lib.description }}</p>
+                    <div class="buttons-bar">
+                        <a class="btn btn-xs btn-primary" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}/{{ lib.version }}" role="button">
+                            Use latest ({{ lib.version }})
+                        </a>
+                        <a class="btn btn-xs btn-default" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}" role="button">
+                            See all versions
+                        </a>
+                    </div>
+                    <div>
+                    {% for keyword in lib.keywords %}
+                        <span class="label label-default">{{ keyword }}</span>
+                    {% endfor %}
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+  </body>
+</html>
