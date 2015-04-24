@@ -17,7 +17,8 @@ argparser.add_argument('cdnjsurl', help='URL to CDNjs packages.json')
 argparser.add_argument('outputpath', help='Path to html output')
 args = argparser.parse_args()
 
-html = jinja2.Template(args.templatepath, autoescape=True)
+with open(args.templatepath) as f:
+    html = jinja2.Template(f.read(), autoescape=True)
 
 all_packages = requests.get(args.cdnjsurl).json()
 libraries = []
