@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import argparse
 import jinja2
+import re
 import requests
 
 
@@ -41,8 +42,8 @@ for package in all_packages:
         url = package['repository']['url']
 
     if url is not None and 'github.com/' in url:
-        parts = url.split('/')
-        user_name, repo_name = parts[3], parts[4]
+        parts = re.sub(r'^\w+://', '', url).split('/')
+        user_name, repo_name = parts[1], parts[2]
         if repo_name.endswith('.git'):
             repo_name = repo_name[:-4]
         print 'Fetching starcount for %s/%s' % (user_name, repo_name)
