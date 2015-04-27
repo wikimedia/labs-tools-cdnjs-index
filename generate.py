@@ -31,17 +31,18 @@ for package in all_packages:
         'homepage': package.get('homepage', None),
         'keywords': package.get('keywords', []),
     }
-    if 'repositories' in package and len(package['repositories']):
-        for repo in package['repositories']:
-            print package['name'], repo
-            if 'github.com/' in repo['url']:
-                parts = repo['url'].split('/')
-                user_name, repo_name = parts[3], parts[4]
-                if repo_name.endswith('.git'):
-                    repo_name = repo_name[:-4]
-                print 'Fetching starcount for %s/%s' % (user_name, repo_name)
-                lib['stars'] = github_stars(user_name, repo_name)
-                break
+    if 'repositories' in package:
+        if isinstance(package['repositories'], dict):
+            url = package['repositories']['url']
+        elif isinstance(package['repositories'], list) and len(package['repositories']) > 0:
+            url = package['repositories'][0]['url']
+        if 'github.com/' in url:
+            parts = url.split('/')
+            user_name, repo_name = parts[3], parts[4]
+            if repo_name.endswith('.git'):
+                repo_name = repo_name[:-4]
+            print 'Fetching starcount for %s/%s' % (user_name, repo_name)
+            lib['stars'] = github_stars(user_name, repo_name)
 
     libraries.append(lib)
 
