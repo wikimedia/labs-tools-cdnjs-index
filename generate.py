@@ -28,7 +28,7 @@ for package in all_packages:
     lib = {
         'name': package['name'],
         'description': package.get('description', None),
-        'version': package['version'],
+        'version': package.get('version', None),
         'homepage': package.get('homepage', None),
         'keywords': package.get('keywords', []),
     }
