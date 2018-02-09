@@ -8,7 +8,9 @@
     <title>Tool Labs CDNjs Mirror</title>
 
     <!-- Bootstrap -->
-    <link href="//tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <link href="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             padding-top: 70px;
@@ -25,7 +27,7 @@
             padding-left: 0px;
         }
 
-        li.lib .buttons-bar { 
+        li.lib .buttons-bar {
             padding: 8px 0px;
         }
 
@@ -33,7 +35,6 @@
             text-align: center;
         }
     </style>
-
   </head>
   <body>
 
@@ -68,13 +69,30 @@
 
                     <p>{{ lib.description }}</p>
                     <div class="buttons-bar">
-                        <a class="btn btn-xs btn-primary" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}/{{ lib.version }}" role="button">
-                            Use latest ({{ lib.version }})
-                        </a>
-                        <a class="btn btn-xs btn-default" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}" role="button">
-                            See all versions
-                        </a>
+                          <button class="btn btn-xs btn-primary" type="button" data-toggle="collapse" data-target="#linksFor{{ lib.name|replace(".","-") }}-current" aria-expanded="false" aria-controls="linksFor{{lib.name|replace(".","-")}}-current">
+                              Use latest ({{ lib.version }})
+                          </button>
+                            {%- for asset in lib.assets -%}
+                              {% if asset.version == lib.version %}
+                              <ul class="list-group collapse" id="linksFor{{ lib.name|replace(".","-") }}-current">
+                              {%- for endpt in asset.files -%}
+                               <li class="list-group-item">https://tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}/{{ asset.version }}/{{ endpt }}</li>
+                              {%- endfor -%}
+                              </ul>
+                              {% endif %}
+                            {%- endfor -%}
+                          <button class="btn btn-xs btn-default" type="button" data-toggle="modal" href="mod{{ lib.name }}.html" data-target="#allVersions-{{lib.name|replace(".","-")}}">
+                            Select a version
+                            <span class="caret"></span>
+                          </button>
+                          <div class="modal fade text-center" id="allVersions-{{lib.name|replace(".","-")}}">
+                            <div class="modal-dialog">
+                              <div class="modal-content">
+                              </div>
+                            </div>
+                          </div>
                     </div>
+
                     <div>
                     {% for keyword in lib.keywords %}
                         <span class="label label-default">{{ keyword }}</span>
