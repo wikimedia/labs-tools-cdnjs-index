@@ -40,7 +40,7 @@ def main():
     with open(args.github_token) as token_file:
         github_token = token_file.read()
 
-    github_token.strip()
+    github_token = github_token.strip()
 
     all_packages = requests.get(args.cdnjsurl).json()
 
