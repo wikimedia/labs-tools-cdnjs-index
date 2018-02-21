@@ -24,7 +24,6 @@ def main():
     argparser.add_argument('--token', dest='github_token', metavar='<github_token>', type=str,
                            help='A filename with a GitHub personal access token'\
                            'with public_repos permission')
-    argparser.add_argument('cdnjsurl', help='URL to CDNjs packages.json')
     argparser.add_argument('outputpath', help='Path to html output')
 
     args = argparser.parse_args()
@@ -42,7 +41,12 @@ def main():
 
     github_token = github_token.strip()
 
-    all_packages = requests.get(args.cdnjsurl).json()
+    fields = "version,description,homepage,keywords,license,repository,author,assets"
+    upstream_url = "https://api.cdnjs.com/libraries?fields={}".format(fields)
+    with requests.get(upstream_url, stream=True) as resp:
+        json_resp = resp.json()
+
+    all_packages = json_resp['results']
 
     libraries = []
 
