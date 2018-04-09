@@ -1,16 +1,16 @@
-cdnjs index
-===========
+Toolforge CDNJS index
+=====================
 
-Generate an index of all of the libraries mirrored to tools-static via
-https://github.com/cdnjs/cdnjs.
+Generate an index of all of the libraries available from
+https://github.com/cdnjs/cdnjs tools-static via the Toolforge managed proxy.
 
 Usage
 -----
 ```
+$ pip install -r requirements.txt
 $ python generate.py \
-  template.html \
-  https://tools-static.wmflabs.org/cdnjs/packages.json \
-  $HOME/public_html/index.html
+  --token $HOME/cdnjs-index/tokenfile \
+  $HOME/public_html/
 ```
 
 License
