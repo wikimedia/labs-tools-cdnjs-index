@@ -21,9 +21,12 @@ def github_stars(user, repo, token):
 
 def main():
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--token', dest='github_token', metavar='<github_token>', type=str,
-                           help='A filename with a GitHub personal access token'\
-                           'with public_repos permission')
+    argparser.add_argument(
+        '--token', dest='github_token', metavar='<github_token>', type=str,
+        required=True,
+        help=(
+            'A filename with a GitHub personal access token'
+            'with public_repos permission'))
     argparser.add_argument('outputpath', help='Path to html output')
 
     args = argparser.parse_args()
