@@ -80,13 +80,14 @@ def main():
 
 
     libraries.sort(key=lambda lib: lib.get('stars', 0), reverse=True)
-    with open(os.path.join(outputdir, 'index.html'), 'w') as index_file:
+    with open(os.path.join(outputdir, 'index.html'), 'w', encoding='utf8') as index_file:
         index_file.write(html.render({
             'libraries': libraries,
         }))
 
     for lib in libraries:
-        with open(os.path.join(outputdir, 'mod' + lib['name'] + '.html'), 'w') as modal_file:
+        with open(os.path.join(outputdir, 'mod' + lib['name'] + '.html'),
+                  'w', encoding='utf8') as modal_file:
             modal_file.write(
                 helper.render({'lib': lib})
             )
