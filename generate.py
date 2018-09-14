@@ -12,12 +12,14 @@ import re
 import jinja2
 import requests
 
+
 def github_stars(user, repo, token):
     """Get number of github stars a repo has"""
     url = "https://api.github.com/repos/%s/%s" % (user, repo)
     headers = {'Authorization': 'token {}'.format(token)}
     data = requests.get(url, headers=headers).json()
     return data.get('stargazers_count', 0)
+
 
 def main():
     argparser = argparse.ArgumentParser()
@@ -63,7 +65,7 @@ def main():
             'assets': package.get('assets', [])
         }
         if package['repository'] and \
-            'github.com/' in package['repository'].get('url', ''):
+                'github.com/' in package['repository'].get('url', ''):
             url = package['repository']['url']
         else:
             url = None
@@ -78,7 +80,6 @@ def main():
 
         libraries.append(lib)
 
-
     libraries.sort(key=lambda lib: lib.get('stars', 0), reverse=True)
     with open(os.path.join(outputdir, 'index.html'), 'w', encoding='utf8') as index_file:
         index_file.write(html.render({
@@ -91,6 +92,7 @@ def main():
             modal_file.write(
                 helper.render({'lib': lib})
             )
+
 
 if __name__ == '__main__':
     main()
