@@ -60,9 +60,15 @@
             <ul>
             {% for lib in libraries %}
                 <li class='lib'>
-                    <h3><a href="{{ lib.homepage }}">{{ lib.name }}</a></h3>
+                    <h3>
+                    {%- if lib.homepage -%}
+                        <a href="{{ lib.homepage }}">{{ lib.name }}</a>
+                    {%- else -%}
+                        {{ lib.name }}
+                    {%- endif -%}
+                    </h3>
 
-                    <p>{{ lib.description }}</p>
+                    <p>{{ lib.description or "" }}</p>
                     <div class="buttons-bar">
                           <button class="btn btn-xs btn-primary" type="button" data-toggle="collapse" data-target="#linksFor{{ lib.name|replace(".","-") }}-current" aria-expanded="false" aria-controls="linksFor{{lib.name|replace(".","-")}}-current">
                               Use latest ({{ lib.version }})
