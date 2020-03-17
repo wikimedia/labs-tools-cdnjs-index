@@ -8,6 +8,7 @@ to a reverse proxy of the cdnjs libraries.
 import argparse
 import os
 import re
+import urllib.parse
 
 import jinja2
 import requests
@@ -46,15 +47,15 @@ def main():
 
     github_token = github_token.strip()
 
-    fields = "version,description,homepage,keywords,license,repository,author,assets"
-    upstream_url = "https://api.cdnjs.com/libraries?fields={}".format(fields)
-    with requests.get(upstream_url, stream=True) as resp:
+    fields = "version,description,homepage,keywords,license,repository,author"
+    upstream_url = "https://api.cdnjs.com/libraries"
+    list_url = upstream_url + "?fields={}".format(fields)
+    with requests.get(list_url, stream=True) as resp:
         json_resp = resp.json()
 
     all_packages = json_resp['results']
 
     libraries = []
-
     for package in all_packages:
         lib = {
             'name': package['name'],
@@ -64,6 +65,9 @@ def main():
             'keywords': package.get('keywords', []),
             'assets': package.get('assets', [])
         }
+        assets_url = upstream_url + "/" + urllib.parse.quote(lib['name']) + "?fields=assets"
+        with requests.get(assets_url) as resp:
+            lib['assets'] = resp.json()['assets']
         if package['repository'] and \
                 'github.com/' in package['repository'].get('url', ''):
             url = package['repository']['url']
@@ -75,9 +79,8 @@ def main():
             user_name, repo_name = parts[-2], parts[-1]
             if repo_name.endswith('.git'):
                 repo_name = repo_name[:-4]
-            print('Fetching starcount for {}/{}'.format(user_name, repo_name))
+            # print('Fetching starcount for {}/{}'.format(user_name, repo_name))
             lib['stars'] = github_stars(user_name, repo_name, github_token)
-
         libraries.append(lib)
 
     libraries.sort(key=lambda lib: lib.get('stars', 0), reverse=True)
@@ -85,7 +88,6 @@ def main():
         index_file.write(html.render({
             'libraries': libraries,
         }))
-
     for lib in libraries:
         with open(os.path.join(outputdir, 'mod' + lib['name'] + '.html'),
                   'w', encoding='utf8') as modal_file:
