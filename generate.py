@@ -78,6 +78,11 @@ def main():
         )
         with requests.get(assets_url) as resp:
             lib["assets"] = resp.json()["assets"]
+
+        # Why this is a thing, I don't know. However, it is.
+        if not lib["assets"]:
+            continue
+
         if package["repository"] and "github.com/" in package["repository"].get(
             "url", ""
         ):
