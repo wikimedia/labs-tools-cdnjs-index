@@ -80,8 +80,14 @@ def main():
             lib["assets"] = resp.json()["assets"]
 
         # Why this is a thing, I don't know. However, it is.
-        if not lib["assets"]:
+        # so far we don't need
+        # "or any([x["files"] is None for x in lib["assets"]])""
+        # but keeping that at the ready in comments seems prudent :(
+        if lib["assets"] is None:
             continue
+
+        if lib["keywords"] is None:  # Found an example of this.
+            lib["keywords"] = []
 
         if package["repository"] and "github.com/" in package["repository"].get(
             "url", ""
