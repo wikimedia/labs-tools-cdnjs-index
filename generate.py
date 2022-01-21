@@ -6,6 +6,7 @@ to a reverse proxy of the cdnjs libraries.
 """
 
 import argparse
+import logging
 import os
 import re
 import urllib.parse
@@ -25,6 +26,14 @@ def github_stars(user, repo, token):
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        dest="loglevel",
+        help="Increase logging verbosity",
+    )
+    argparser.add_argument(
         "--token",
         dest="github_token",
         metavar="<github_token>",
@@ -38,6 +47,14 @@ def main():
     argparser.add_argument("outputpath", help="Path to html output")
 
     args = argparser.parse_args()
+
+    logging.basicConfig(
+        level=max(logging.DEBUG, logging.WARNING - (10 * args.loglevel)),
+        format="%(asctime)s %(name)-12s %(levelname)-8s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%SZ",
+    )
+    logging.captureWarnings(True)
+    logger = logging.getLogger("generate")
 
     outputdir = args.outputpath
 
@@ -62,6 +79,7 @@ def main():
 
     libraries = []
     for package in all_packages:
+        logger.debug("Processing %s...", package["name"])
         lib = {
             "name": package["name"],
             "description": package.get("description", None),
@@ -70,6 +88,7 @@ def main():
             "keywords": package.get("keywords", []),
             "assets": package.get("assets", []),
         }
+
         assets_url = (
             upstream_url
             + "/"
@@ -101,7 +120,7 @@ def main():
             user_name, repo_name = parts[-2], parts[-1]
             if repo_name.endswith(".git"):
                 repo_name = repo_name[:-4]
-            # print('Fetching starcount for {}/{}'.format(user_name, repo_name))
+            logger.debug("Fetching starcount for %s/%s", user_name, repo_name)
             lib["stars"] = github_stars(user_name, repo_name, github_token)
         libraries.append(lib)
 
