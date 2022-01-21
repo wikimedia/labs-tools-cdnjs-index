@@ -79,14 +79,14 @@ def main():
 
     libraries = []
     for package in all_packages:
-        logger.debug("Processing %s...", package["name"])
+        logger.info("Processing %s...", package["name"])
         lib = {
             "name": package["name"],
             "description": package.get("description", None),
             "version": package.get("version", None),
             "homepage": package.get("homepage", None),
-            "keywords": package.get("keywords", []),
-            "assets": package.get("assets", []),
+            "keywords": package.get("keywords", None),
+            "assets": package.get("assets", None),
         }
 
         assets_url = (
@@ -96,7 +96,10 @@ def main():
             + "?fields=assets"
         )
         with requests.get(assets_url) as resp:
-            lib["assets"] = resp.json()["assets"]
+            try:
+                lib["assets"] = resp.json()["assets"]
+            except (KeyError, ValueError):
+                logger.exception("Failed to fetch assets using %s", assets_url)
 
         # Why this is a thing, I don't know. However, it is.
         # so far we don't need
