@@ -1,13 +1,13 @@
 <ul class="list-group" id="allVersions-{{lib.name|replace(".","-")}}-accordion" aria-multiselectable="true">
-{% for asset in lib.assets %}
+{% for version, asset in lib.assets | dictsort %}
     <li class="list-group-item">
-        <button type="button" class="btn btn-xs btn-danger" data-toggle="collapse" data-target="#allVersions-{{ lib.name|replace(".","-") }}-{{ asset.version|replace(".","-") }}" data-parent="#allVersions-{{lib.name|replace(".","-")}}-accordion">
-        {{ asset.version }}
+        <button type="button" class="btn btn-xs btn-danger" data-toggle="collapse" data-target="#allVersions-{{ lib.name|replace(".","-") }}-{{ version|replace(".","-") }}" data-parent="#allVersions-{{lib.name|replace(".","-")}}-accordion">
+        {{ version }}
         </button>
-        <div id="allVersions-{{ lib.name|replace(".","-") }}-{{ asset.version|replace(".","-") }}" class="collapse">
+        <div id="allVersions-{{ lib.name|replace(".","-") }}-{{ version|replace(".","-") }}" class="collapse">
         <ul class="list-group">
         {%- for endpt in asset.files -%}
-        <li class="list-group-item">https://tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}/{{ asset.version }}/{{ endpt }}</li>
+        <li class="list-group-item">https://tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}/{{ version }}/{{ endpt }}</li>
         {%- endfor -%}
         </ul>
         </div>

@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import time
+import urllib3.exceptions
 import urllib.parse
 
 import jinja2
@@ -48,6 +49,61 @@ def github_stars(user, repo, token, logger=None):
     url = "https://api.github.com/repos/%s/%s" % (user, repo)
     data, _ = github_request(url, token, logger=logger)
     return data.get("stargazers_count", 0)
+
+
+def github_tree(url, token, recursive=False, logger=None):
+    """Get a Git tree from the GitHub REST API."""
+    if not recursive:
+        data, _ = github_request(url, token, logger=logger)
+        return data
+
+    recursive_url = url + "?recursive=true"
+    data, _ = github_request(recursive_url, token, logger=logger)
+    if not data.get("truncated", False):
+        return data
+
+    if logger:
+        logger.info(
+            "GitHub returned truncated data for %s, "
+            "falling back to many non-recursive requests",
+            recursive_url,
+        )
+    # if GitHub returned a/1, a/2, b/1,
+    # then we can assume the a/ subtree is complete,
+    # and only do additional requests staring from b/
+    truncated_data = data
+    recursive_tree = []
+    current_prefix = None
+    current_subtree = []
+    complete_subtrees = set()
+    for entry in truncated_data.get("tree", []):
+        [prefix, *_] = entry["path"].split("/", 1)
+        if prefix != current_prefix:
+            recursive_tree += current_subtree
+            if current_prefix is not None:
+                complete_subtrees.add(current_prefix)
+            current_prefix = prefix
+            current_subtree = []
+        current_subtree.append(entry)
+
+    data, _ = github_request(url, token, logger=logger)
+    if "tree" not in data:
+        raise KeyError(f'{url} returned data without "tree": {data}')
+    for entry in data["tree"]:
+        if entry["path"] in complete_subtrees:
+            continue
+        recursive_tree.append(entry)
+        if entry["type"] == "tree":
+            subtree = github_tree(entry["url"], token, recursive=True, logger=logger)
+            for subentry in subtree["tree"]:
+                recursive_tree.append({
+                    **subentry,
+                    "path": f"{entry['path']}/{subentry['path']}",
+                })
+    return {
+        **data,
+        "tree": recursive_tree,
+    }
 
 
 def main():
@@ -104,18 +160,39 @@ def main():
 
     all_packages = json_resp["results"]
 
+    # get a github:cdnjs/cdnjs ajax/libs/ listing in preparation
+    github_cdnjs_url = "https://api.github.com/repos/cdnjs/cdnjs/git/trees/master"
+    github_cdnjs_tree = github_tree(github_cdnjs_url, github_token)
+    github_ajax_url = [entry["url"]
+                       for entry
+                       in github_cdnjs_tree["tree"]
+                       if entry["path"] == "ajax"][0]
+    github_ajax_tree = github_tree(github_ajax_url, github_token)
+    github_libs_url = [entry["url"]
+                       for entry
+                       in github_ajax_tree["tree"]
+                       if entry["path"] == "libs"][0]
+    github_libs_tree = github_tree(github_libs_url, github_token)
+    github_library_urls = {
+        entry["path"]: entry["url"]
+        for entry in github_libs_tree["tree"]
+    }
+
     libraries = []
     for package in all_packages:
-        logger.info("Processing %s...", package["name"])
+        name = package["name"]
+        logger.info("Processing %s...", name)
         lib = {
-            "name": package["name"],
+            "name": name,
             "description": package.get("description", None),
             "version": package.get("version", None),
             "homepage": package.get("homepage", None),
             "keywords": package.get("keywords", None),
-            "assets": package.get("assets", None),
+            "assets": {},
         }
 
+        # get assets from CDNjs API as preferred source
+        # (note that since 2022 it only returns the latest version, see T342519)
         assets_url = (
             upstream_url
             + "/"
@@ -124,16 +201,48 @@ def main():
         )
         with requests.get(assets_url) as resp:
             try:
-                lib["assets"] = resp.json()["assets"]
+                for asset in resp.json().get("assets", []):
+                    lib["assets"][asset["version"]] = asset
             except (KeyError, ValueError):
                 logger.exception("Failed to fetch assets using %s", assets_url)
 
-        # Why this is a thing, I don't know. However, it is.
-        # so far we don't need
-        # "or any([x["files"] is None for x in lib["assets"]])""
-        # but keeping that at the ready in comments seems prudent :(
-        if lib["assets"] is None:
-            continue
+        # get other versions from listing GitHub instead
+        # (we could get them from CDNjs but only with one request per version, way too slow)
+        try:
+            github_library_tree = github_tree(
+                github_library_urls[name],
+                github_token,
+                recursive=True,
+                logger=logger,
+            )
+            # we get a flat listing of version1/file1, version1/subdir/file2, version2/file1 etc.
+            # group that into one entry per version and add it to the assets
+            current_asset = None
+            if "tree" not in github_library_tree:
+                raise KeyError(
+                    f'{github_library_urls[name]} returned data '
+                    f'without "tree": {github_library_tree}',
+                )
+            for entry in github_library_tree["tree"]:
+                if entry["path"] == "package.json":
+                    continue
+                [version, *_] = entry["path"].split("/", 1)
+                if current_asset is None:
+                    current_asset = {"version": version, "files": []}
+                elif version != current_asset["version"]:
+                    lib["assets"].setdefault(current_asset["version"], current_asset)
+                    current_asset = {"version": version, "files": []}
+                if entry["type"] == "blob":
+                    current_asset["files"].append(entry["path"][len(version)+1:])
+            if current_asset is not None:
+                lib["assets"].setdefault(current_asset["version"], current_asset)
+        except (
+                KeyError,
+                ValueError,
+                requests.exceptions.RequestException,
+                urllib3.exceptions.HTTPError,
+        ):
+            logger.exception("Failed to fetch additional versions for %s from GitHub", name)
 
         if lib["keywords"] is None:  # Found an example of this.
             lib["keywords"] = []

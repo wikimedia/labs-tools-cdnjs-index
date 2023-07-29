@@ -73,15 +73,16 @@
                           <button class="btn btn-xs btn-primary" type="button" data-toggle="collapse" data-target="#linksFor{{ lib.name|replace(".","-") }}-current" aria-expanded="false" aria-controls="linksFor{{lib.name|replace(".","-")}}-current">
                               Use latest ({{ lib.version }})
                           </button>
-                            {%- for asset in lib.assets -%}
-                              {% if asset.version == lib.version %}
+                            {%- if lib.version in lib.assets -%}
+                              {%- set asset = lib.assets[lib.version] -%}
                               <ul class="list-group collapse" id="linksFor{{ lib.name|replace(".","-") }}-current">
                               {%- for endpt in asset.files -%}
                                <li class="list-group-item">https://tools-static.wmflabs.org/cdnjs/ajax/libs/{{ lib.name }}/{{ asset.version }}/{{ endpt }}</li>
                               {%- endfor -%}
                               </ul>
-                              {% endif %}
-                            {%- endfor -%}
+                            {%- else -%}
+                              <!-- {{ lib.name }} version {{ lib.version }} not found in its assets: {{ lib.assets.keys() | list | tojson }} -->
+                            {%- endif -%}
                           <button class="btn btn-xs btn-default" type="button" data-toggle="modal" href="mod{{ lib.name }}.html" data-target="#allVersions-{{lib.name|replace(".","-")}}">
                             Select a version
                             <span class="caret"></span>
