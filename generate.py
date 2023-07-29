@@ -263,18 +263,24 @@ def main():
             lib["stars"] = github_stars(user_name, repo_name, github_token, logger=logger)
         libraries.append(lib)
 
+        with open(
+            os.path.join(outputdir, "mod" + name + ".html"),
+            "w",
+            encoding="utf8",
+        ) as modal_file:
+            modal_file.write(helper.render({"lib": lib}))
+        # throw away non-latest versions to save memory, not needed in index.html
+        try:
+            lib["assets"] = {lib["version"]: lib["assets"][lib["version"]]}
+        except KeyError:
+            # happened for 'xls' library (KeyError: '1.0.0')
+            pass
+
     libraries.sort(key=lambda lib: lib.get("stars", 0), reverse=True)
     with open(
         os.path.join(outputdir, "index.html"), "w", encoding="utf8"
     ) as index_file:
         index_file.write(html.render({"libraries": libraries}))
-    for lib in libraries:
-        with open(
-            os.path.join(outputdir, "mod" + lib["name"] + ".html"),
-            "w",
-            encoding="utf8",
-        ) as modal_file:
-            modal_file.write(helper.render({"lib": lib}))
 
 
 if __name__ == "__main__":
