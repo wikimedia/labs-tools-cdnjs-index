@@ -9,17 +9,44 @@ import argparse
 import logging
 import os
 import re
+import time
 import urllib.parse
 
 import jinja2
 import requests
 
 
-def github_stars(user, repo, token):
+def github_request(url, token, logger=None):
+    """Make a request against the GitHub REST API."""
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer {}".format(token),
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 403:
+        reset_time = response.headers["x-ratelimit-reset"]
+        sleep_duration = (
+            float(reset_time)
+            - time.time()
+            + 10
+        )
+        if logger:
+            logger.info(
+                "GitHub returned HTTP 403, "
+                "sleeping for %.1f s until @%s (plus ten seconds)",
+                sleep_duration,
+                reset_time,
+            )
+        time.sleep(sleep_duration)
+        return github_request(url, token, logger=logger)
+    return response.json(), response.status_code
+
+
+def github_stars(user, repo, token, logger=None):
     """Get number of github stars a repo has"""
     url = "https://api.github.com/repos/%s/%s" % (user, repo)
-    headers = {"Authorization": "token {}".format(token)}
-    data = requests.get(url, headers=headers).json()
+    data, _ = github_request(url, token, logger=logger)
     return data.get("stargazers_count", 0)
 
 
@@ -124,7 +151,7 @@ def main():
             if repo_name.endswith(".git"):
                 repo_name = repo_name[:-4]
             logger.debug("Fetching starcount for %s/%s", user_name, repo_name)
-            lib["stars"] = github_stars(user_name, repo_name, github_token)
+            lib["stars"] = github_stars(user_name, repo_name, github_token, logger=logger)
         libraries.append(lib)
 
     libraries.sort(key=lambda lib: lib.get("stars", 0), reverse=True)
