@@ -51,16 +51,44 @@ def github_stars(user, repo, token, logger=None):
     return data.get("stargazers_count", 0)
 
 
+def github_trim_entry(entry):
+    """Trim a GitHub tree entry to save memory."""
+    if "type" in entry and "path" in entry:
+        return {
+            "type": entry["type"],
+            "path": entry["path"],
+            # throw away mode, sha, size, url
+        }
+    else:
+        # might be an error, better keep all of it
+        return entry
+
+
+def github_trim_tree(data):
+    """Trim a GitHub tree to save memory."""
+    if "tree" in data:
+        return {
+            "tree": [
+                github_trim_entry(entry)
+                for entry in data["tree"]
+            ],
+            # throw away sha, url, truncated
+        }
+    else:
+        # probably an error, better keep all of it
+        return data
+
+
 def github_tree(url, token, recursive=False, logger=None):
     """Get a Git tree from the GitHub REST API."""
     if not recursive:
         data, _ = github_request(url, token, logger=logger)
-        return data
+        return github_trim_tree(data)
 
     recursive_url = url + "?recursive=true"
     data, _ = github_request(recursive_url, token, logger=logger)
     if not data.get("truncated", False):
-        return data
+        return github_trim_tree(data)
 
     if logger:
         logger.info(
@@ -84,7 +112,8 @@ def github_tree(url, token, recursive=False, logger=None):
                 complete_subtrees.add(current_prefix)
             current_prefix = prefix
             current_subtree = []
-        current_subtree.append(entry)
+        current_subtree.append(github_trim_entry(entry))
+    truncated_data = []  # free memory early
 
     data, _ = github_request(url, token, logger=logger)
     if "tree" not in data:
@@ -92,7 +121,7 @@ def github_tree(url, token, recursive=False, logger=None):
     for entry in data["tree"]:
         if entry["path"] in complete_subtrees:
             continue
-        recursive_tree.append(entry)
+        recursive_tree.append(github_trim_entry(entry))
         if entry["type"] == "tree":
             subtree = github_tree(entry["url"], token, recursive=True, logger=logger)
             for subentry in subtree["tree"]:
@@ -101,7 +130,6 @@ def github_tree(url, token, recursive=False, logger=None):
                     "path": f"{entry['path']}/{subentry['path']}",
                 })
     return {
-        **data,
         "tree": recursive_tree,
     }
 
@@ -161,18 +189,20 @@ def main():
     all_packages = json_resp["results"]
 
     # get a github:cdnjs/cdnjs ajax/libs/ listing in preparation
+    # (using github_request() instead of github_tree()
+    # because here we need untrimmed trees with URLs)
     github_cdnjs_url = "https://api.github.com/repos/cdnjs/cdnjs/git/trees/master"
-    github_cdnjs_tree = github_tree(github_cdnjs_url, github_token)
+    github_cdnjs_tree, _ = github_request(github_cdnjs_url, github_token)
     github_ajax_url = [entry["url"]
                        for entry
                        in github_cdnjs_tree["tree"]
                        if entry["path"] == "ajax"][0]
-    github_ajax_tree = github_tree(github_ajax_url, github_token)
+    github_ajax_tree, _ = github_request(github_ajax_url, github_token)
     github_libs_url = [entry["url"]
                        for entry
                        in github_ajax_tree["tree"]
                        if entry["path"] == "libs"][0]
-    github_libs_tree = github_tree(github_libs_url, github_token)
+    github_libs_tree, _ = github_request(github_libs_url, github_token)
     github_library_urls = {
         entry["path"]: entry["url"]
         for entry in github_libs_tree["tree"]
