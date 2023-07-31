@@ -227,52 +227,63 @@ def main():
             upstream_url
             + "/"
             + urllib.parse.quote(lib["name"])
-            + "?fields=assets"
+            + "?fields=assets,versions"
         )
+        num_versions = 1
         with requests.get(assets_url) as resp:
             try:
-                for asset in resp.json().get("assets", []):
+                data = resp.json()
+                num_versions = len(data.get("versions", []))
+                for asset in data.get("assets", []):
                     lib["assets"][asset["version"]] = asset
             except (KeyError, ValueError):
                 logger.exception("Failed to fetch assets using %s", assets_url)
 
-        # get other versions from listing GitHub instead
-        # (we could get them from CDNjs but only with one request per version, way too slow)
-        try:
-            github_library_tree = github_tree(
-                github_library_urls[name],
-                github_token,
-                recursive=True,
-                logger=logger,
-            )
-            # we get a flat listing of version1/file1, version1/subdir/file2, version2/file1 etc.
-            # group that into one entry per version and add it to the assets
-            current_asset = None
-            if "tree" not in github_library_tree:
-                raise KeyError(
-                    f'{github_library_urls[name]} returned data '
-                    f'without "tree": {github_library_tree}',
+        if num_versions < 1000:
+            # get other versions from listing GitHub instead
+            # (we could get them from CDNjs but only with one request per version, way too slow)
+            try:
+                github_library_tree = github_tree(
+                    github_library_urls[name],
+                    github_token,
+                    recursive=True,
+                    logger=logger,
                 )
-            for entry in github_library_tree["tree"]:
-                if entry["path"] == "package.json":
-                    continue
-                [version, *_] = entry["path"].split("/", 1)
-                if current_asset is None:
-                    current_asset = {"version": version, "files": []}
-                elif version != current_asset["version"]:
+                # we get a flat listing of ver1/file1, ver1/subdir/file2, ver2/file1 etc.
+                # group that into one entry per version and add it to the assets
+                current_asset = None
+                if "tree" not in github_library_tree:
+                    raise KeyError(
+                        f'{github_library_urls[name]} returned data '
+                        f'without "tree": {github_library_tree}',
+                    )
+                for entry in github_library_tree["tree"]:
+                    if entry["path"] == "package.json":
+                        continue
+                    [version, *_] = entry["path"].split("/", 1)
+                    if current_asset is None:
+                        current_asset = {"version": version, "files": []}
+                    elif version != current_asset["version"]:
+                        lib["assets"].setdefault(current_asset["version"], current_asset)
+                        current_asset = {"version": version, "files": []}
+                    if entry["type"] == "blob":
+                        current_asset["files"].append(entry["path"][len(version)+1:])
+                if current_asset is not None:
                     lib["assets"].setdefault(current_asset["version"], current_asset)
-                    current_asset = {"version": version, "files": []}
-                if entry["type"] == "blob":
-                    current_asset["files"].append(entry["path"][len(version)+1:])
-            if current_asset is not None:
-                lib["assets"].setdefault(current_asset["version"], current_asset)
-        except (
-                KeyError,
-                ValueError,
-                requests.exceptions.RequestException,
-                urllib3.exceptions.HTTPError,
-        ):
-            logger.exception("Failed to fetch additional versions for %s from GitHub", name)
+            except (
+                    KeyError,
+                    ValueError,
+                    requests.exceptions.RequestException,
+                    urllib3.exceptions.HTTPError,
+            ):
+                logger.exception("Failed to fetch additional versions for %s from GitHub", name)
+        else:
+            lib["too_many_assets"] = num_versions
+            logger.info(
+                "Too many versions for %s (%d), skipping fetching of older versions",
+                name,
+                num_versions,
+            )
 
         if lib["keywords"] is None:  # Found an example of this.
             lib["keywords"] = []

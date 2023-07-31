@@ -13,4 +13,10 @@
         </div>
     </li>
 {% endfor %}
+{%- if lib.too_many_assets %}
+<!--
+  This library has too many older versions ({{ lib.too_many_assets }}), so they cannot be shown here.
+  You can still use them by putting together the right URL manually.
+-->
+{% endif -%}
 </ul>
